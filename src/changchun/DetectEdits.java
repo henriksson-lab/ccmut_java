@@ -30,6 +30,7 @@ public class DetectEdits {
 		String geneid;
 		Interval interval;
 		public int sumdel;
+		public int sumins;
 		public int numread;
 		
 		
@@ -40,7 +41,6 @@ public class DetectEdits {
 	public static boolean showFound=false;
 	
 	
-	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException {
 		
 		File fPos=new File("/home/mahogny/Desktop/celegans/edit_positions.bed");
@@ -94,7 +94,7 @@ public class DetectEdits {
 				System.out.println(readRecords);
 			}
 
-			if(readRecords%100000000 == 0){
+			if(readRecords%10000000 == 0){
 				System.out.println(readRecords);
 			}
 
@@ -108,7 +108,7 @@ public class DetectEdits {
 						/**
 						 * Count how many deletions in the sequence based on the cigar
 						 */
-						int numdel=0;
+						int numdel=0, numins=0;
 						Cigar cigar=samRecord.getCigar();
 						System.out.println(samRecord.getCigarString());
 						for(CigarElement e:cigar.getCigarElements()) {
@@ -116,14 +116,18 @@ public class DetectEdits {
 							if(op==CigarOperator.D) {
 								numdel+=e.getLength();
 							}
+							if(op==CigarOperator.I) {
+								numins+=e.getLength();
+							}
 						}
 						
-						System.out.println("wbid "+edit.geneid+"   "+numdel);
+						if(showFound) {
+							System.out.println("wbid "+edit.geneid+"   "+numdel+"  "+numins);
+						}
 					
 						edit.sumdel+=numdel;
+						edit.sumins+=numins;
 						edit.numread++;
-						
-						
 						
 						found=true;
 						break editloop;
@@ -144,6 +148,9 @@ public class DetectEdits {
 		}
 		for(OneEdit e:allEdits) {
 			pw.println("del\t"+e.geneid+"\t"+e.sumdel);
+		}
+		for(OneEdit e:allEdits) {
+			pw.println("ins\t"+e.geneid+"\t"+e.sumdel);
 		}
 		pw.close();
 	}
