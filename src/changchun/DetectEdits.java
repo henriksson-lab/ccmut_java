@@ -34,9 +34,10 @@ public class DetectEdits {
 		
 	}
 	
+	public static boolean showFound=false;
 	
 	
-	
+	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException {
 		
 		File fPos=new File("/home/mahogny/Desktop/celegans/edit_positions.bed");
@@ -114,7 +115,7 @@ public class DetectEdits {
 					}
 				}
 			}
-			if(!found) {
+			if(!found && showFound) {
 				System.out.println("no overlap");
 				System.out.println(samRecord);
 			}
