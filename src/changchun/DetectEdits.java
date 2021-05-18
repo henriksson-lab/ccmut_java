@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -37,29 +38,48 @@ public class DetectEdits {
 	
 	
 	public static void main(String[] args) throws IOException {
-		BufferedReader br=new BufferedReader(new FileReader("/home/mahogny/Desktop/celegans/edit_positions.bed"));
+		
+		File fPos=new File("/home/mahogny/Desktop/celegans/edit_positions.bed");
 		File fBAM=new File("/home/mahogny/Desktop/celegans/P19764_101_S1_L001_R1_001.fastq.gz.out.bam");
 		
 		
-		ArrayList<OneEdit> edits=new ArrayList<DetectEdits.OneEdit>();
+		if(args.length!=0) {
+			fPos=new File(args[0]);
+			fBAM=new File(args[1]);
+		}
 		
+		BufferedReader br=new BufferedReader(new FileReader(fPos));
+
+
+		/**
+		 * Read positions that could have been edited
+		 */
+		ArrayList<OneEdit> allEdits=new ArrayList<DetectEdits.OneEdit>();
+		HashMap<String, ArrayList<OneEdit>> mapChromEdits=new HashMap<String, ArrayList<OneEdit>>();
 		String line;
 		while((line=br.readLine())!=null) {
 			OneEdit e=new OneEdit();
-			
 			//System.out.println(line);
 			String[] toks=line.split("\t", 4);
-			
 			e.interval=new Interval(
 					toks[0],
 					Integer.parseInt(toks[1]),
 					Integer.parseInt(toks[2]));
 			e.geneid=toks[3];
+			allEdits.add(e);
 			
-			edits.add(e);
+			ArrayList<OneEdit> elist=mapChromEdits.get(e.interval.getContig());
+			if(elist==null)
+				mapChromEdits.put(e.interval.getContig(),elist=new ArrayList<DetectEdits.OneEdit>());
+			elist.add(e);	
 		}
 		
 		
+		
+		
+		/**
+		 * Loop through BAM file
+		 */
 		final SamReader reader = SamReaderFactory.makeDefault().open(fBAM);
 		int readRecords=0;
 		for (final SAMRecord samRecord : reader) {
@@ -68,32 +88,38 @@ public class DetectEdits {
 				System.out.println(readRecords);
 			}
 			
-			
-			
-			editloop: for(OneEdit edit:edits) {
-				boolean found=false;
-				if(samRecord.overlaps(edit.interval)) {
-					
+			boolean found=false;
+			ArrayList<OneEdit> elist=mapChromEdits.get(samRecord.getContig());
+			if(elist!=null) {
+				editloop: for(OneEdit edit:elist) {
+					if(samRecord.overlaps(edit.interval)) {
+						
 
-					int numdel=0;
-					Cigar cigar=samRecord.getCigar();
-					for(CigarElement e:cigar.getCigarElements()) {
-						CigarOperator op=e.getOperator();
-						if(op==CigarOperator.D) {
-							numdel+=e.getLength();
+						/**
+						 * Count how many deletions in the sequence based on the cigar
+						 */
+						int numdel=0;
+						Cigar cigar=samRecord.getCigar();
+						for(CigarElement e:cigar.getCigarElements()) {
+							CigarOperator op=e.getOperator();
+							if(op==CigarOperator.D) {
+								numdel+=e.getLength();
+							}
 						}
-					}
+						
+						System.out.println("numdel "+numdel);
 					
-					System.out.println("numdel "+numdel);
-				
-					found=true;
-					break editloop;
+						found=true;
+						break editloop;
+					}
 				}
-				if(!found)
-					System.out.println("no overlap");
-				
+			}
+			if(!found) {
+				System.out.println("no overlap");
+				System.out.println(samRecord);
 			}
 			
+
 			
 		}
 		
