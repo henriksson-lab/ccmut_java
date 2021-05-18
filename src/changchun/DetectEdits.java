@@ -32,8 +32,7 @@ public class DetectEdits {
 		public int sumdel;
 		public int sumins;
 		public int numread;
-		
-		
+		public int fine;
 		
 		
 	}
@@ -128,6 +127,9 @@ public class DetectEdits {
 						edit.sumdel+=numdel;
 						edit.sumins+=numins;
 						edit.numread++;
+						if(numdel+numins==0) {
+							edit.fine++;
+						}
 						
 						found=true;
 						break editloop;
@@ -150,7 +152,10 @@ public class DetectEdits {
 			pw.println("del\t"+e.geneid+"\t"+e.sumdel);
 		}
 		for(OneEdit e:allEdits) {
-			pw.println("ins\t"+e.geneid+"\t"+e.sumdel);
+			pw.println("ins\t"+e.geneid+"\t"+e.sumins);
+		}
+		for(OneEdit e:allEdits) {
+			pw.println("fine\t"+e.geneid+"\t"+e.fine);
 		}
 		pw.close();
 	}
