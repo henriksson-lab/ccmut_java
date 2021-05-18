@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -28,6 +29,8 @@ public class DetectEdits {
 	public static class OneEdit {
 		String geneid;
 		Interval interval;
+		public int sumdel;
+		public int numread;
 		
 		
 		
@@ -42,11 +45,13 @@ public class DetectEdits {
 		
 		File fPos=new File("/home/mahogny/Desktop/celegans/edit_positions.bed");
 		File fBAM=new File("/home/mahogny/Desktop/celegans/P19764_101_S1_L001_R1_001.fastq.gz.out.bam");
+		File fOut=new File("/home/mahogny/Desktop/celegans/mutant_summary");
 		
 		
 		if(args.length!=0) {
 			fPos=new File(args[0]);
 			fBAM=new File(args[1]);
+			fOut=new File(args[2]);
 		}
 		
 		BufferedReader br=new BufferedReader(new FileReader(fPos));
@@ -88,7 +93,11 @@ public class DetectEdits {
 			if(readRecords%1000000 == 0){
 				System.out.println(readRecords);
 			}
-			
+
+			if(readRecords%100000000 == 0){
+				System.out.println(readRecords);
+			}
+
 			boolean found=false;
 			ArrayList<OneEdit> elist=mapChromEdits.get(samRecord.getContig());
 			if(elist!=null) {
@@ -108,8 +117,13 @@ public class DetectEdits {
 							}
 						}
 						
-						System.out.println("numdel "+numdel);
+						System.out.println("wbid "+edit.geneid+"   "+numdel);
 					
+						edit.sumdel+=numdel;
+						edit.numread++;
+						
+						
+						
 						found=true;
 						break editloop;
 					}
@@ -119,13 +133,18 @@ public class DetectEdits {
 				System.out.println("no overlap");
 				System.out.println(samRecord);
 			}
-			
-
-			
 		}
-		
-		
 		br.close();
+		
+		
+		PrintWriter pw=new PrintWriter(fOut);
+		for(OneEdit e:allEdits) {
+			pw.println("reads\t"+e.geneid+"\t"+e.numread);
+		}
+		for(OneEdit e:allEdits) {
+			pw.println("del\t"+e.geneid+"\t"+e.sumdel);
+		}
+		pw.close();
 	}
 
 }
