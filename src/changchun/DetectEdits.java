@@ -95,7 +95,7 @@ public class DetectEdits {
 			}
 
 			if(readRecords%10000000 == 0){
-				System.out.println(readRecords);
+				//System.exit(0);
 			}
 
 			boolean found=false;
@@ -110,7 +110,7 @@ public class DetectEdits {
 						 */
 						int numdel=0, numins=0;
 						Cigar cigar=samRecord.getCigar();
-						System.out.println(samRecord.getCigarString());
+						//System.out.println(samRecord.getCigarString());
 						for(CigarElement e:cigar.getCigarElements()) {
 							CigarOperator op=e.getOperator();
 							if(op==CigarOperator.D) {
