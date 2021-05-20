@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -21,6 +22,10 @@ import htsjdk.samtools.util.Interval;
  * Pre-filter to get speed: samtools view P19764_101_S1_L001_R1_001.fastq.gz.out.bam -L test.bed
  * samtools view P19764_101_S1_L001_R1_001.fastq.gz.out.bam -F 4 -L edit_positions.bed -o subset.bam
  * 
+ * This file extract the number of reads, deletions etc stats for every gene in the list
+ * 
+ * Also extract reads covering the region
+ * 
  * @author Johan Henriksson
  *
  */
@@ -34,7 +39,7 @@ public class DetectEdits {
 		public int numread;
 		public int fine;
 		
-		
+		LinkedList<String> reads=new LinkedList<String>();		
 	}
 	
 	public static boolean showFound=false;
@@ -59,7 +64,7 @@ public class DetectEdits {
 		/**
 		 * Read positions that could have been edited
 		 */
-		ArrayList<OneEdit> allEdits=new ArrayList<DetectEdits.OneEdit>();
+		ArrayList<OneEdit> allEdits=new ArrayList<OneEdit>();
 		HashMap<String, ArrayList<OneEdit>> mapChromEdits=new HashMap<String, ArrayList<OneEdit>>();
 		String line;
 		while((line=br.readLine())!=null) {
@@ -75,7 +80,7 @@ public class DetectEdits {
 			
 			ArrayList<OneEdit> elist=mapChromEdits.get(e.interval.getContig());
 			if(elist==null)
-				mapChromEdits.put(e.interval.getContig(),elist=new ArrayList<DetectEdits.OneEdit>());
+				mapChromEdits.put(e.interval.getContig(),elist=new ArrayList<OneEdit>());
 			elist.add(e);	
 		}
 		
@@ -93,57 +98,80 @@ public class DetectEdits {
 				System.out.println(readRecords);
 			}
 
-			if(readRecords%10000000 == 0){
+			if(readRecords%3000000 == 0){
 				//System.exit(0);
 			}
 
-			boolean found=false;
-			ArrayList<OneEdit> elist=mapChromEdits.get(samRecord.getContig());
-			if(elist!=null) {
-				editloop: for(OneEdit edit:elist) {
-					if(samRecord.overlaps(edit.interval)) {
-						
+			
+			//check that read mapped in proper pair (0x2)
+			if((samRecord.getFlags() & 0x2)!=0) {
+				
+				//with bowtie2, can remove the second read like this. but some argue that this is overkill
+				//-F "[XS] == null and not unmapped  and not duplicate"
+								
+				boolean found=false;
+				ArrayList<OneEdit> elist=mapChromEdits.get(samRecord.getContig());
+				if(elist!=null) {
+					editloop: for(OneEdit edit:elist) {
+						if(samRecord.overlaps(edit.interval)) {
+							
 
-						/**
-						 * Count how many deletions in the sequence based on the cigar
-						 */
-						int numdel=0, numins=0;
-						Cigar cigar=samRecord.getCigar();
-						//System.out.println(samRecord.getCigarString());
-						for(CigarElement e:cigar.getCigarElements()) {
-							CigarOperator op=e.getOperator();
-							if(op==CigarOperator.D) {
-								numdel+=e.getLength();
+							/**
+							 * Gather the reads. reverse complement if on the other strand
+							 * 
+							 * read reverse strand (0x10) 
+							 */
+							if((samRecord.getFlags() & 0x10)!=0) { 
+								edit.reads.add(revcomp(samRecord.getReadString()));
+							} else {
+								edit.reads.add(samRecord.getReadString());
 							}
-							if(op==CigarOperator.I) {
-								numins+=e.getLength();
+							
+							/**
+							 * Count how many deletions in the sequence based on the cigar
+							 */
+							int numdel=0, numins=0;
+							Cigar cigar=samRecord.getCigar();
+							//System.out.println(samRecord.getCigarString());
+							for(CigarElement e:cigar.getCigarElements()) {
+								CigarOperator op=e.getOperator();
+								if(op==CigarOperator.D) {
+									numdel+=e.getLength();
+								}
+								if(op==CigarOperator.I) {
+									numins+=e.getLength();
+								}
 							}
-						}
+							
+							if(showFound) {
+								System.out.println("wbid "+edit.geneid+"   "+numdel+"  "+numins);
+							}
 						
-						if(showFound) {
-							System.out.println("wbid "+edit.geneid+"   "+numdel+"  "+numins);
+							edit.sumdel+=numdel;
+							edit.sumins+=numins;
+							edit.numread++;
+							if(numdel+numins==0) {
+								edit.fine++;
+							}
+							
+							found=true;
+							break editloop;
 						}
-					
-						edit.sumdel+=numdel;
-						edit.sumins+=numins;
-						edit.numread++;
-						if(numdel+numins==0) {
-							edit.fine++;
-						}
-						
-						found=true;
-						break editloop;
 					}
 				}
-			}
-			if(!found && showFound) {
-				System.out.println("no overlap");
-				System.out.println(samRecord);
+				if(!found && showFound) {
+					System.out.println("no overlap");
+					System.out.println(samRecord);
+				}
+				
 			}
 		}
 		br.close();
 		
 		
+		/**
+		 * Write statistics
+		 */
 		PrintWriter pw=new PrintWriter(fOut);
 		for(OneEdit e:allEdits) {
 			pw.println("reads\t"+e.geneid+"\t"+e.numread);
@@ -158,6 +186,52 @@ public class DetectEdits {
 			pw.println("fine\t"+e.geneid+"\t"+e.fine);
 		}
 		pw.close();
+		
+		
+		/**
+		 * Write the reads for each gene
+		 */
+		for(OneEdit edit:allEdits) {
+			File fFastq=new File(fOut.getParentFile(), fOut.getName()+"."+edit.geneid);
+			pw=new PrintWriter(fFastq);
+			int i=0;
+			for(String seq:edit.reads) {
+				pw.println(">"+i);
+				pw.println(seq);
+				i++;
+			}
+			pw.close();
+		}
+		
+	}
+	
+
+	/**
+	 * Get the complement
+	 */
+	public static char comp(char c) {
+		if(c=='A')
+			return 'T';
+		else if(c=='T')
+			return 'A';
+		else if(c=='C')
+			return 'G';
+		else if(c=='G')
+			return 'C';
+		else throw new RuntimeException(":(");
+	}
+	
+	
+	/**
+	 * Get the reverse complement
+	 */
+	public static String revcomp(String s) {
+		char[] c=new char[s.length()];
+		
+		for(int i=0;i<s.length();i++) {
+			c[c.length-i-1] = comp(s.charAt(i));
+		}
+		return new String(c);
 	}
 
 }

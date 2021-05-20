@@ -9,3 +9,6 @@ run:
 		../edit_positions.bed \
 		/corgi/henriksson/changchun/p2/P19764_101_S1_L001_R1_001.fastq.gz.out.bam \
 		out.stat
+
+toupp:
+	scp -r . rackham.uppmax.uu.se:/home/mahogny/mystore/dataset/changchun/
