@@ -2,12 +2,13 @@ package changchun;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -30,17 +31,6 @@ import htsjdk.samtools.util.Interval;
  *
  */
 public class DetectEdits {
-	
-	public static class OneEdit {
-		String geneid;
-		Interval interval;
-		public int sumdel;
-		public int sumins;
-		public int numread;
-		public int fine;
-		
-		LinkedList<String> reads=new LinkedList<String>();		
-	}
 	
 	public static boolean showFound=false;
 	
@@ -185,12 +175,16 @@ public class DetectEdits {
 		for(OneEdit e:allEdits) {
 			pw.println("fine\t"+e.geneid+"\t"+e.fine);
 		}
+		for(OneEdit e:allEdits) {
+			pw.println("totc\t"+e.geneid+"\t"+readRecords);
+		}
 		pw.close();
 		
 		
 		/**
 		 * Write the reads for each gene
 		 */
+		/*
 		for(OneEdit edit:allEdits) {
 			File fFastq=new File(fOut.getParentFile(), fOut.getName()+".gene."+edit.geneid);
 			pw=new PrintWriter(fFastq);
@@ -201,7 +195,19 @@ public class DetectEdits {
 				i++;
 			}
 			pw.close();
+		}*/
+		
+		
+		for(OneEdit edit:allEdits) {
+			edit.alignment=Kalign.call(edit.reads);
 		}
+		
+		File fSerial=new File(fOut.getParentFile(), fOut.getName()+".serial");
+	    FileOutputStream fileOutputStream = new FileOutputStream(fSerial);
+	    ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+	    objectOutputStream.writeObject(allEdits);
+	    objectOutputStream.flush();
+	    objectOutputStream.close();
 		
 	}
 	
@@ -218,6 +224,8 @@ public class DetectEdits {
 			return 'G';
 		else if(c=='G')
 			return 'C';
+		else if(c=='N')
+			return 'N';
 		else throw new RuntimeException(":(");
 	}
 	
