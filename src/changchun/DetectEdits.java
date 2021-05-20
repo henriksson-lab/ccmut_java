@@ -192,7 +192,7 @@ public class DetectEdits {
 		 * Write the reads for each gene
 		 */
 		for(OneEdit edit:allEdits) {
-			File fFastq=new File(fOut.getParentFile(), fOut.getName()+"."+edit.geneid);
+			File fFastq=new File(fOut.getParentFile(), fOut.getName()+".gene."+edit.geneid);
 			pw=new PrintWriter(fFastq);
 			int i=0;
 			for(String seq:edit.reads) {
