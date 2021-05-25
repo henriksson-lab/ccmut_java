@@ -8,6 +8,13 @@ import java.io.PrintWriter;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
+/**
+ * 
+ * Get coordinates of each gene and store in BED file - for later FASTA extraction
+ * 
+ * @author Johan Henriksson
+ *
+ */
 public class GetGeneCoord {
 
 	public static void main(String[] args) throws IOException {
@@ -31,22 +38,25 @@ public class GetGeneCoord {
 					String sfrom=stok.nextToken();
 					String sto=stok.nextToken();
 					/*String sdot=*/stok.nextToken();
-					/*String sstrand=*/stok.nextToken();
+					String sstrand=stok.nextToken();
 					/*String sdot2=*/stok.nextToken();
 					String sattr=stok.nextToken();
 
 					int from=Integer.parseInt(sfrom);
 					int to=Integer.parseInt(sto);
-					from=Math.max(1,from-150);
-					to=to+150; //pray...
+					//from=Math.max(1,from-150);
+					//to=to+150; //pray...
 					
 					TreeMap<String,String> attr=parseAttr(sattr);
 					
 					String gene_id=attr.get("gene_id");
 					pw.println(
 							chrom+"\t"+from+"\t"+to+"\t"+
-									gene_id);
+									gene_id+"\t"+
+									"0\t"+sstrand);
 					//https://en.wikipedia.org/wiki/BED_(file_format)
+					
+					//	System.out.println(line);
 				}
 				
 				

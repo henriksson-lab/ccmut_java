@@ -5,10 +5,23 @@ import java.util.LinkedList;
 
 import htsjdk.samtools.util.Interval;
 
+/**
+ * 
+ * Summary information for one gene in one strain, about how it was edited
+ * 
+ * @author Johan Henriksson
+ *
+ */
 public class OneEdit implements Serializable {
 	private static final long serialVersionUID = 1L;
+	
 	public String geneid;
 	public Interval interval;
+	
+	public String chrom;
+	public int from, to;
+	
+	
 	public int sumdel;
 	public int sumins;
 	public int numread;
