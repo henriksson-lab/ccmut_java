@@ -15,7 +15,7 @@ run:
 tosql:
 	cd bin; java -cp .:../lib/htsjdk-2.23.0-3-g657b0a6-SNAPSHOT.jar:../lib/sqlite-jdbc-3.34.0.jar \
 		changchun.FormatAlignment \
-		/media/mahogny/TOSHIBA/changchun/mut
+		/data/henlab/changchun/mut
 
 toupp:
 	scp -r . rackham.uppmax.uu.se:/home/mahogny/mystore/dataset/changchun/
