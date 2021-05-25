@@ -88,7 +88,6 @@ public class FormatAlignment {
 	
 	public static void processFile(
 			File fSerial, String strain) throws IOException {
-		
 
 		@SuppressWarnings("unchecked")
 		ArrayList<OneEdit> allEdits=(ArrayList<OneEdit>)CCutil.readObjectFile(fSerial);
@@ -162,6 +161,14 @@ public class FormatAlignment {
 		//HashMap<String,String> attemptedGeneEdits=CCutil.readMapWbidEditedseq();
 		//CCutil.readGeneFastaWithExtra();
 		
+		/*
+		String name="P19764_154_S54_L001_R1_001.fastq.gz.out.bam.mut.serial";
+		name=name.substring(name.indexOf('S')+1);
+		name=name.substring(0,name.indexOf('_'));
+		int id=Integer.parseInt(name);
+		System.out.println("CHS "+(1000+id));
+		System.exit(0);*/
+				
 		File rootdir=new File("/media/mahogny/TOSHIBA/changchun/mut");
 		if(args.length!=0)
 			rootdir=new File(args[0]);
@@ -174,6 +181,18 @@ public class FormatAlignment {
 		createTable(conn);
 
 		//101,CHS 1001
+		for(File fSerial:rootdir.listFiles()) {
+			if(fSerial.getName().endsWith(".serial")) {
+				String name=fSerial.getName();
+				name=name.substring(name.indexOf('S')+1);
+				name=name.substring(0,name.indexOf('_'));
+				int id=Integer.parseInt(name);
+				String chsid="CHS "+(1000+id);
+				processFile(fSerial, chsid);
+
+			}
+		}
+		/*
 		for(int i=0;i<280;i++) {
 			System.out.println(i);
 			int ngi_id=101+i;
@@ -185,7 +204,7 @@ public class FormatAlignment {
 			} else {
 				System.out.println("Missing file "+fSerial);
 			}
-		}
+		}*/
 		
 	    
 		

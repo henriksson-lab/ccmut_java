@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import changchun.OneEdit;
 import changchun.util.CCutil;
@@ -71,9 +70,6 @@ public class FormatAlignmentTest {
 			    		line=br.readLine();
 		    		}
 		    	}
-		    	
-		    	
-		    	//e.alignment.split("\n", arg1)
 		    	
     			for(int i=0;i<lines.size();i++) {
 		    		System.out.println(lines.get(i));
