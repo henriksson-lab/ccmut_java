@@ -39,11 +39,55 @@ import htsjdk.samtools.util.Interval;
 public class DetectEdits {
 	
 	public static boolean showFound=false;
+
+	public static HashMap<String,String> attemptedGeneEdits;
+
+	/**
+	 * Align all the sequences
+	 */
+	public static void align(OneEdit e) throws IOException {
+		
+    	String fastaSeqWithExtra=CCutil.mapGeneOrigfastaWithExtra.get(e.geneid);
+    	if(fastaSeqWithExtra==null)
+    		throw new RuntimeException("missing fastaseq extra "+e.geneid);
+
+    	String fastaSeqNoExtra=CCutil.mapGeneOrigfastaNoExtra.get(e.geneid);
+    	if(fastaSeqNoExtra==null)
+    		throw new RuntimeException("missing fastaseq "+e.geneid);
+
+    	String editSeq=attemptedGeneEdits.get(e.geneid);
+    	if(editSeq==null)
+    		throw new RuntimeException("missing editseq "+e.geneid);
+    	
+    	
+    	//Figure out if the edit sequence should be reverse complemented or not
+		MatchSeq m=new MatchSeq();
+		if(!m.match(fastaSeqWithExtra, editSeq, 20)) {
+			editSeq=CCutil.revcomp(editSeq);
+			if(!m.match(fastaSeqWithExtra, editSeq, 20)) {
+				throw new RuntimeException("unable to match "+e.geneid+"  "
+			+editSeq
+			+CCutil.revcomp(editSeq)
+			+"\n\n"+fastaSeqWithExtra
+			+"\n\n"+fastaSeqNoExtra);
+			}
+		}
+
+
+		//Add original genome sequence - no extra here
+    	e.reads.add(CCutil.mapGeneOrigfastaWithExtra.get(e.geneid));
+		//Add sequence to substitute
+    	e.reads.add(editSeq);
+
+		//edit.alignment=Kalign.call(edit.reads);
+		e.alignment=ClustalOmega.call(e.reads);
+	}
 	
 	
 	public static void main(String[] args) throws IOException {
-		CCutil.readGeneFasta();
-		HashMap<String,String> attemptedGeneEdits=CCutil.readMapWbidEditedseq();
+		CCutil.readGeneFastaNoExtra();
+		CCutil.readGeneFastaWithExtra();
+		attemptedGeneEdits=CCutil.readMapWbidEditedseq();
 
 		
 		//Default files
@@ -103,7 +147,7 @@ public class DetectEdits {
 			}
 
 			if(usedread> 5000){
-				break;
+				//break;
 			}
 
 			
@@ -215,34 +259,8 @@ public class DetectEdits {
 		for(OneEdit e:allEdits) {
 			System.out.println("align "+e.geneid);
 			
-			
-	    	String fastaSeq=CCutil.mapGeneOrigfasta.get(e.geneid);
-	    	if(fastaSeq==null)
-	    		throw new RuntimeException("missing fastaseq "+e.geneid);
-	    	
-	    	String editSeq=attemptedGeneEdits.get(e.geneid);
-	    	if(editSeq==null)
-	    		throw new RuntimeException("missing editseq "+e.geneid);
-			MatchSeq m=new MatchSeq();
-			if(!m.match(fastaSeq, editSeq, 30)) {
-				m=new MatchSeq();
-				editSeq=CCutil.revcomp(e.geneid);
-				if(!m.match(fastaSeq, editSeq, 30)) {
-					throw new RuntimeException("unable to match "+e.geneid);
-				}
-			}
+			align(e);
 
-
-    		//Add original genome sequence
-	    	e.reads.add(CCutil.mapGeneOrigfasta.get(e.geneid));
-			//Add sequence to substitute
-	    	e.reads.add(editSeq);
-
-			
-			
-			
-			//edit.alignment=Kalign.call(edit.reads);
-			e.alignment=ClustalOmega.call(e.reads);
 			
 			
 			//Remove interval variable - not serializable

@@ -56,7 +56,7 @@ public class WriteGeneEditPositions {
 	 */
 	public static void main(String[] args) throws IOException {
 		TreeMap<String, String> geneMap=CCutil.getNameMap();
-		CCutil.readGeneFasta();
+		CCutil.readGeneFastaWithExtra();
 		BufferedReader br=new BufferedReader(new FileReader(new File("/home/mahogny/Desktop/celegans/gene_edits.csv")));
 		
 		PrintWriter pwListGene=new PrintWriter(new File("/home/mahogny/Desktop/celegans/mutant.csv"));
@@ -83,7 +83,7 @@ public class WriteGeneEditPositions {
 			newseq=newseq.toUpperCase();
 			
 			//System.out.println(wbid+","+newseq);
-			String fasta=CCutil.mapGeneOrigfasta.get(wbid);
+			String fasta=CCutil.mapGeneOrigfastaWithExtra.get(wbid);
 			if(fasta!=null) {
 				//Replace the content. Return new seq
 				if(!attemptFitGeneEdit(pwListGene, pwBed, fasta, newseq, wbid)) {

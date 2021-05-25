@@ -21,7 +21,8 @@ import java.util.TreeMap;
 public class CCutil {
 
 	
-	public static TreeMap<String, String> mapGeneOrigfasta=new TreeMap<String, String>();
+	public static HashMap<String,String> mapGeneOrigfastaNoExtra=new HashMap<String, String>();
+	public static TreeMap<String, String> mapGeneOrigfastaWithExtra=new TreeMap<String, String>();
 	public static TreeMap<String, String> mapGeneChrom=new TreeMap<String, String>();
 	public static TreeMap<String, Integer> mapGeneStart=new TreeMap<String, Integer>();
 
@@ -41,8 +42,10 @@ public class CCutil {
 		else if(c=='N')
 			return 'N';
 		else {
-			throw new RuntimeException("bad base: "+c);
+            System.out.println("base: "+c);
+            return 'N';
 		}
+	
 	}
 
 	/**
@@ -62,9 +65,7 @@ public class CCutil {
 	/**
 	 * Read FASTA with the sequence of each gene
 	 */
-	/*
-	public static HashMap<String,String> readGeneFasta() throws IOException {
-		HashMap<String,String> map=new HashMap<String, String>();
+	public static void readGeneFastaNoExtra() throws IOException {
 		BufferedReader br=new BufferedReader(new FileReader(new File("genes.fa")));
 		
 		String line;
@@ -72,20 +73,19 @@ public class CCutil {
 			String wbid=line.substring(1);
 			wbid=wbid.substring(0,wbid.indexOf(":"));
 			line=br.readLine();
-			map.put(wbid,line);
+			mapGeneOrigfastaNoExtra.put(wbid,line);
 		}
 		
 		br.close();
-		return map;
-	}*/
+	}
 
 	
 	/**
 	 * Get FASTA seq for genes that we have previously cut out
 	 */
-	public static void readGeneFasta() throws IOException {
-		BufferedReader br=new BufferedReader(new FileReader(new File("genes.fa")));
-		//BufferedReader br=new BufferedReader(new FileReader(new File("all.bed.fa")));
+	public static void readGeneFastaWithExtra() throws IOException {
+		//BufferedReader br=new BufferedReader(new FileReader(new File("genes.fa")));
+		BufferedReader br=new BufferedReader(new FileReader(new File("all.bed.fa")));  //cut out a bit extra here... 300bp?
 				
 	
 		StringBuilder sb=new StringBuilder();
@@ -94,7 +94,7 @@ public class CCutil {
 		while((line=br.readLine())!=null) {
 			if(line.startsWith(">")) {
 				if(sb.length()>0) {
-					mapGeneOrigfasta.put(thisSeq,sb.toString());
+					mapGeneOrigfastaWithExtra.put(thisSeq,sb.toString());
 				}
 				
 				//>WBGene00199986::X:15627747-15628189
@@ -117,7 +117,7 @@ public class CCutil {
 		}
 		
 		if(sb.length()>0) {
-			mapGeneOrigfasta.put(thisSeq,sb.toString());
+			mapGeneOrigfastaWithExtra.put(thisSeq,sb.toString());
 		}
 		
 		br.close();

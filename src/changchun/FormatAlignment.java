@@ -4,12 +4,14 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import changchun.util.CCutil;
-import changchun.util.ClustalOmega;
-import changchun.util.MatchSeq;
 
 
 /**
@@ -20,57 +22,84 @@ import changchun.util.MatchSeq;
  */
 public class FormatAlignment {
 	
+	public static Connection conn;
 	
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
-		
-		HashMap<String,String> attemptedGeneEdits=CCutil.readMapWbidEditedseq();
-		CCutil.readGeneFasta();
-		
-		
-		
-		
-		File fSerial=new File("/media/mahogny/TOSHIBA/changchun/mut/P19764_101_S1_L001_R1_001.fastq.gz.out.bam.mut.serial");
-		File fSerialOut=new File("/media/mahogny/TOSHIBA/changchun/mut/P19764_101_S1_L001_R1_001.fastq.gz.out.bam.mut.serial2");
-		
-		
-		if(args.length!=0) {
-			fSerial=new File(args[0]);
-			fSerialOut=new File(args[0]+".out");
+
+	
+	/**
+	 * Connect to the database
+	 */
+	private static Connection connect(String db) throws SQLException {
+		// SQLite connection string
+		String url = "jdbc:sqlite:"+db;
+		Connection conn = DriverManager.getConnection(url);
+		return conn;
+	}
+
+	/**
+	 * Insert an alignment into the SQL table
+	 */
+	public static void insertSQL(Connection conn, String strain, OneEdit edit) throws IOException {
+		try {
+			String sql = "INSERT INTO alignment(strain, wbid, alignment, countread, countins, countdel,   fracins, fracdel, fracfine) VALUES(?,?,?,?,?,?,?,?,?)";
+
+			PreparedStatement pstmt = conn.prepareStatement(sql);
+
+			pstmt.setString(1, strain);
+			pstmt.setString(2, edit.geneid);
+			pstmt.setString(3, edit.alignment);
+			
+			pstmt.setInt(4, edit.numread);
+			pstmt.setInt(5, edit.sumins);
+			pstmt.setInt(6, edit.sumdel);
+			
+			double numread=edit.numread;
+			if(numread==0)
+				numread=1;
+			pstmt.setDouble(7, edit.sumins/numread);
+			pstmt.setDouble(8, edit.sumdel/numread);
+			pstmt.setDouble(9, edit.fine/numread);
+			
+			pstmt.executeUpdate();
+		} catch (SQLException ex) {
+			throw new IOException(ex);
 		}
+	}
+	    
+	
+	public static void createTable(Connection conn) throws SQLException {
+        String sql_create_rawreads_table = "CREATE TABLE alignment ("+
+        		"strain    text NOT NULL,"+
+                "wbid      text NOT NULL,"+
+                "alignment text NOT NULL,"+
+                "countread number NOT NULL,"+
+                "countins  number NOT NULL,"+
+                "countdel  number NOT NULL,"+
+                "fracins   number NOT NULL,"+
+                "fracdel   number NOT NULL,"+
+                "fracfine   number NOT NULL"+
+                ");";
+
+        Statement stmt = conn.createStatement();
+        stmt.execute(sql_create_rawreads_table);
+        
+	}
+	
+	
+	public static void processFile(
+			File fSerial, String strain) throws IOException {
 		
+
 		@SuppressWarnings("unchecked")
 		ArrayList<OneEdit> allEdits=(ArrayList<OneEdit>)CCutil.readObjectFile(fSerial);
 	
-	    int iii=0;
+		int iii=0;
 	    for(OneEdit e:allEdits) {
-	    	System.out.println(iii);
 	    	iii++;
-	    	
 	    	if(!e.alignment.contentEquals("")) {
-		    	
-		    	String fastaSeq=CCutil.mapGeneOrigfasta.get(e.geneid);
-		    	String editSeq=attemptedGeneEdits.get(e.geneid);
-		    	if(editSeq==null)
-		    		throw new RuntimeException("missing "+e.geneid);
-				MatchSeq m=new MatchSeq();
-				if(!m.match(fastaSeq, editSeq, 30)) {
-					m=new MatchSeq();
-					editSeq=CCutil.revcomp(e.geneid);
-					if(!m.match(fastaSeq, editSeq, 30)) {
-						throw new RuntimeException("unable to match "+e.geneid);
-					}
-				}
-		    	
-	    		//Add genome fastq
-		    	e.reads.add(CCutil.mapGeneOrigfasta.get(e.geneid));
-				//Add sequence to substitute
-		    	e.reads.add(editSeq);
-		    	
-		    	//Align
-		    	e.alignment=ClustalOmega.call(e.reads);
-	
-	    		
-	    		System.out.println(e.geneid);
+	    		//System.out.println(e.geneid);
+	    		if(iii%100==0)
+	    			System.out.println("   "+iii);
 	    		
 		    	BufferedReader br=new BufferedReader(new StringReader(e.alignment));
 		    	
@@ -79,12 +108,14 @@ public class FormatAlignment {
 		    		br.readLine();
 		    	
 		    	//Read the first block of alignments
-		    	ArrayList<String> lines=new ArrayList<String>();
+		    	ArrayList<StringBuilder> lines=new ArrayList<StringBuilder>(100);
 		    	for(;;) {
 		    		String line=br.readLine();
 		    		if(line==null || line.contentEquals("") || line.startsWith(" "))
 		    			break;
-		    		lines.add(line.substring(8));
+		    		StringBuilder sb=new StringBuilder();
+		    		sb.append(line.substring(8));
+		    		lines.add(sb);
 		    	}
 		    	br.readLine();
 		    	
@@ -95,7 +126,7 @@ public class FormatAlignment {
 		    			break;
 		    		} else {
 		    			for(int i=0;i<lines.size();i++) {
-				    		lines.set(i,lines.get(i)+line.substring(8));
+				    		lines.get(i).append(line.substring(8));
 				    		line=br.readLine();
 		    			}
 		    			//Skip one line
@@ -113,14 +144,50 @@ public class FormatAlignment {
 				e.alignment=sb.toString();
 				
 		    	br.close();
+		    	
+    			insertSQL(conn, strain, e);
+	    	} else {
+	    		e.alignment="";
 	    	}
-	
-	    	
 	    }
+	}
+	
+	
+	
+	/**
+	 * 
+	 * Entry point
+	 */
+	public static void main(String[] args) throws IOException, ClassNotFoundException, SQLException {
+		//HashMap<String,String> attemptedGeneEdits=CCutil.readMapWbidEditedseq();
+		//CCutil.readGeneFastaWithExtra();
+		
+		File rootdir=new File("/media/mahogny/TOSHIBA/changchun/mut");
+		if(args.length!=0)
+			rootdir=new File(args[0]);
+		
+		File fSQL=new File(rootdir, "alignments.sqlite");
+		if(fSQL.exists())
+			fSQL.delete();
+		
+		conn=connect(fSQL.getAbsolutePath());
+		createTable(conn);
+
+		//101,CHS 1001
+		for(int i=0;i<280;i++) {
+			System.out.println(i);
+			int ngi_id=101+i;
+			int ccid=1001+i;
+			
+			File fSerial=new File(rootdir, "P19764_"+ngi_id+"_S"+(i+1)+"_L001_R1_001.fastq.gz.out.bam.mut.serial");		
+			if(fSerial.exists()) {
+				processFile(fSerial, "CHS "+ccid);
+			} else {
+				System.out.println("Missing file "+fSerial);
+			}
+		}
+		
 	    
-	    
-		System.out.println("serializing");
-		CCutil.writeObjectFile(fSerialOut, allEdits);
 		
 	}
 }
