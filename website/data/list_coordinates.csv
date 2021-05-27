@@ -1,0 +1,7 @@
+coord_id,coord_name
+countread,Total count
+countins,Insertion count
+countdel,Deletion count
+fracins,Normalized insertions
+fracdel,Normalized deletions
+fracfine,Normalized perfectly aligned

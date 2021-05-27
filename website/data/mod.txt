@@ -1,0 +1,4 @@
+CREATE TABLE alignment_sub AS SELECT strain, wbid, countread, countins, countdel, fracins, fracdel,fracfine FROM alignment;
+
+strain    text NOT NULL,wbid      text NOT NULL,alignment text NOT NULL,countread number NOT NULL,countins  number NOT NULL,countdel  
+number NOT NULL,fracins   number NOT NULL,fracdel   number NOT NULL,fracfine   number NOT NULL
