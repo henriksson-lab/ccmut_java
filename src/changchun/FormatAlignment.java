@@ -183,6 +183,7 @@ public class FormatAlignment {
 		//101,CHS 1001
 		for(File fSerial:rootdir.listFiles()) {
 			if(fSerial.getName().endsWith(".serial")) {
+				System.out.println(fSerial);
 				String name=fSerial.getName();
 				name=name.substring(name.indexOf('S')+1);
 				name=name.substring(0,name.indexOf('_'));
