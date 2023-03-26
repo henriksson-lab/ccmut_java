@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.TreeSet;
 
 import changchun.util.CCutil;
 import changchun.util.ClustalOmega;
@@ -74,6 +75,11 @@ public class DetectEdits {
 		}
 
 
+		//Deduplicate the reads
+		TreeSet<String> uniqueReads = new TreeSet<String>(e.reads);
+		e.reads.clear();
+		e.reads.addAll(uniqueReads);
+		
 		//Add original genome sequence - no extra here
     	e.reads.add(CCutil.mapGeneOrigfastaWithExtra.get(e.geneid));
 		//Add sequence to substitute
