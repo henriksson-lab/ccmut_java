@@ -17,6 +17,9 @@ import changchun.util.CCutil;
 /**
  * Take the alignment output. Format it for viewing
  * 
+ * ############################ Note -- changed code in /corgi/websites/changchun_mutant/mut/src  --- extract later for keeping
+ * 
+ * 
  * @author Johan Henriksson
  *
  */
@@ -77,7 +80,7 @@ public class FormatAlignment {
                 "countdel  number NOT NULL,"+
                 "fracins   number NOT NULL,"+
                 "fracdel   number NOT NULL,"+
-                "fracfine   number NOT NULL"+
+                "fracfine  number NOT NULL"+
                 ");";
 
         Statement stmt = conn.createStatement();
@@ -158,16 +161,6 @@ public class FormatAlignment {
 	 * Entry point
 	 */
 	public static void main(String[] args) throws IOException, ClassNotFoundException, SQLException {
-		//HashMap<String,String> attemptedGeneEdits=CCutil.readMapWbidEditedseq();
-		//CCutil.readGeneFastaWithExtra();
-		
-		/*
-		String name="P19764_154_S54_L001_R1_001.fastq.gz.out.bam.mut.serial";
-		name=name.substring(name.indexOf('S')+1);
-		name=name.substring(0,name.indexOf('_'));
-		int id=Integer.parseInt(name);
-		System.out.println("CHS "+(1000+id));
-		System.exit(0);*/
 				
 		File rootdir=new File("/media/mahogny/TOSHIBA/changchun/mut");
 		if(args.length!=0)
@@ -193,19 +186,7 @@ public class FormatAlignment {
 
 			}
 		}
-		/*
-		for(int i=0;i<280;i++) {
-			System.out.println(i);
-			int ngi_id=101+i;
-			int ccid=1001+i;
-			
-			File fSerial=new File(rootdir, "P19764_"+ngi_id+"_S"+(i+1)+"_L001_R1_001.fastq.gz.out.bam.mut.serial");		
-			if(fSerial.exists()) {
-				processFile(fSerial, "CHS "+ccid);
-			} else {
-				System.out.println("Missing file "+fSerial);
-			}
-		}*/
+		
 		
 	    
 		

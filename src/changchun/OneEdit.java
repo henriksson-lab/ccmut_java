@@ -27,5 +27,15 @@ public class OneEdit implements Serializable {
 	public int numread;
 	public int fine;
 	public LinkedList<String> reads=new LinkedList<String>();
-	public String alignment;		
+	public String alignment;
+
+	
+	/// After better figuring out region
+	public int reducedFrom;		
+	public int reducedTo;
+	public String alignedGenome;
+	public String alignedTemplate;		
+	
+	
+	
 }

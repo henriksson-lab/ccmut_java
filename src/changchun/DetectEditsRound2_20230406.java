@@ -9,11 +9,13 @@ import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.zip.GZIPOutputStream;
 
 import changchun.util.CCutil;
 import changchun.util.ClustalOmega;
-import changchun.util.MatchSeq;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -37,40 +39,59 @@ import htsjdk.samtools.util.Interval;
  * @author Johan Henriksson
  *
  */
-public class DetectEdits {
+public class DetectEditsRound2_20230406 {
 	
 	public static boolean showFound=false;
 
-	public static HashMap<String,String> attemptedGeneEdits;
+	public static HashMap<String,String> mapWbidTemplate;
 
+	public static HashMap<String,String> mapGeneOrigfastaNoExtra=new HashMap<String, String>();
+	public static TreeMap<String, String> mapGeneOrigfastaWithExtra=new TreeMap<String, String>();
+
+
+	/**
+	 * Dirty check if proper direction
+	 */
+	public static boolean match(String fasta, String editSeq, int len) {
+		String s1=editSeq.substring(0,len);
+		int start=editSeq.length()-len;
+		String s2=editSeq.substring(start,start+len);
+		return fasta.indexOf(s1) != -1 || fasta.indexOf(s2) != -1;
+	}
+	
 	/**
 	 * Align all the sequences
 	 */
 	public static void align(OneEdit e) throws IOException {
 		
-    	String fastaSeqWithExtra=CCutil.mapGeneOrigfastaWithExtra.get(e.geneid);
+    	String fastaSeqWithExtra=mapGeneOrigfastaWithExtra.get(e.geneid);
     	if(fastaSeqWithExtra==null)
     		throw new RuntimeException("missing fastaseq extra "+e.geneid);
 
-    	String fastaSeqNoExtra=CCutil.mapGeneOrigfastaNoExtra.get(e.geneid);
-    	if(fastaSeqNoExtra==null)
-    		throw new RuntimeException("missing fastaseq "+e.geneid);
-
-    	String editSeq=attemptedGeneEdits.get(e.geneid);
+    	String editSeq=mapWbidTemplate.get(e.geneid);
     	if(editSeq==null)
     		throw new RuntimeException("missing editseq "+e.geneid);
     	
     	
     	//Figure out if the edit sequence should be reverse complemented or not
-		MatchSeq m=new MatchSeq();
-		if(!m.match(fastaSeqWithExtra, editSeq, 20)) {
+		//MatchSeq m=new MatchSeq();
+		if(!match(fastaSeqWithExtra, editSeq, 20)) {
 			editSeq=CCutil.revcomp(editSeq);
-			if(!m.match(fastaSeqWithExtra, editSeq, 20)) {
-				throw new RuntimeException("unable to match "+e.geneid+"  "
-			+editSeq
-			+CCutil.revcomp(editSeq)
-			+"\n\n"+fastaSeqWithExtra
-			+"\n\n"+fastaSeqNoExtra);
+			if(!match(fastaSeqWithExtra, editSeq, 20)) {
+				editSeq=CCutil.revcomp(editSeq);
+				if(!match(fastaSeqWithExtra, editSeq, 10)) {  // Pray that shorter sequence will do
+					editSeq=CCutil.revcomp(editSeq);
+					if(!match(fastaSeqWithExtra, editSeq, 10)) {
+						System.out.println("unable to match "+e.geneid+"  "
+								+editSeq
+								+CCutil.revcomp(editSeq)
+								+"\n\n"+fastaSeqWithExtra);
+						editSeq=fastaSeqWithExtra;  //At least it aligns!
+						//throw new RuntimeException(
+						//		);
+					
+					}
+				}
 			}
 		}
 
@@ -80,8 +101,8 @@ public class DetectEdits {
 		e.reads.clear();
 		e.reads.addAll(uniqueReads);
 		
-		//Add original genome sequence - no extra here
-    	e.reads.add(CCutil.mapGeneOrigfastaWithExtra.get(e.geneid));
+		//Add original genome sequence 
+    	e.reads.add(mapGeneOrigfastaWithExtra.get(e.geneid));
 		//Add sequence to substitute
     	e.reads.add(editSeq);
 
@@ -90,28 +111,86 @@ public class DetectEdits {
 	}
 	
 	
-	public static void main(String[] args) throws IOException {
-		CCutil.readGeneFastaNoExtra();
-		CCutil.readGeneFastaWithExtra();
-		attemptedGeneEdits=CCutil.readMapWbidEditedseq();
+	
+	
+	/**
+	 * Read FASTA with the sequence of each gene -- some extra to aid alignment
+	 */
+	public static void readGeneFastaWithExtra(File fFASTA) throws IOException {
+		BufferedReader br=new BufferedReader(new FileReader(fFASTA));
+		
+		String line;
+		while((line=br.readLine())!=null) {
+			String wbid=line.substring(1);
+			wbid=wbid.substring(0,wbid.indexOf(":"));
+			line=br.readLine();
+			mapGeneOrigfastaWithExtra.put(wbid,line);
+		}
+		
+		br.close();
+	}
 
+
+	
+	
+	/**
+	 * Read what genes should be edited to. wbid -> new sequence ---- NEW, ONLY RELIES ON WBID
+	 */
+	public static HashMap<String, String> readMapWbidEditedseqNEW(File fCSV) throws IOException {
+		HashMap<String,String> attemptedGeneEdits=new HashMap<String, String>();
+	
+		//@SuppressWarnings("resource")
+		BufferedReader br=new BufferedReader(new FileReader(fCSV));
+				
+		br.readLine(); //Fine should have a header
+		String line=null;
+		while((line=br.readLine())!=null) {
+			String[] col=line.split(",", 0);
+			
+			String wbid=col[0];  /// Should have WBID in first column
+			
+			String newseq=col[1];  // template in second column
+			
+			
+			newseq=newseq.replaceAll(" ", "");
+			newseq=newseq.replaceAll("\\.", "");
+			newseq=newseq.toUpperCase();
+			
+			attemptedGeneEdits.put(wbid, newseq);
+		}
+		br.close();
+		return attemptedGeneEdits;
+	}
+	
+	
+	public static void main(String[] args) throws IOException {
+
+		
+		// /home/mahogny/mystore/dataset/changchun/gpcr/refgenome/list_geneedit_pos_NEW.bed
 		
 		//Default files
 		File fPos=new File("/home/mahogny/Desktop/celegans/edit_positions.bed");
+		File fFastaWithExtra=new File("/home/mahogny/mystore/dataset/changchun/gpcr/refgenome/list_geneedit_pos_wextra_NEW.fa");
+		File fTemplates=new File("gene_edits_20230331.csv");
 		File fBAM=new File("/home/mahogny/Desktop/celegans/P19764_101_S1_L001_R1_001.fastq.gz.out.bam");
 		File fOut=new File("/home/mahogny/Desktop/celegans/mutant_summary");
 		
 		//Get name of files
 		if(args.length!=0) {
 			fPos=new File(args[0]);
-			fBAM=new File(args[1]);
-			fOut=new File(args[2]);
+			fFastaWithExtra=new File(args[1]);
+			fTemplates=new File(args[2]);
+			fBAM=new File(args[3]);
+			fOut=new File(args[4]);
 		}
 		
+		readGeneFastaWithExtra(fFastaWithExtra);
+		mapWbidTemplate=readMapWbidEditedseqNEW(fTemplates);
+
 
 
 		/**
-		 * Read positions that could have been edited
+		 * Read info about positions that could have been edited
 		 */
 		ArrayList<OneEdit> allEdits=new ArrayList<OneEdit>();
 		HashMap<String, ArrayList<OneEdit>> mapChromEdits=new HashMap<String, ArrayList<OneEdit>>();
@@ -229,57 +308,49 @@ public class DetectEdits {
 		PrintWriter pw=new PrintWriter(fOut);
 		for(OneEdit e:allEdits) {
 			pw.println("reads\t"+e.geneid+"\t"+e.numread);
-		}
-		for(OneEdit e:allEdits) {
 			pw.println("del\t"+e.geneid+"\t"+e.sumdel);
-		}
-		for(OneEdit e:allEdits) {
 			pw.println("ins\t"+e.geneid+"\t"+e.sumins);
-		}
-		for(OneEdit e:allEdits) {
 			pw.println("fine\t"+e.geneid+"\t"+e.fine);
-		}
-		for(OneEdit e:allEdits) {
 			pw.println("totc\t"+e.geneid+"\t"+readRecords);
 		}
 		pw.close();
-		
+				
 		
 		/**
-		 * Write the reads for each gene
+		 * Write all the objects; new method that conserves memory!
 		 */
-		/*
-		for(OneEdit edit:allEdits) {
-			File fFastq=new File(fOut.getParentFile(), fOut.getName()+".gene."+edit.geneid);
-			pw=new PrintWriter(fFastq);
-			int i=0;
-			for(String seq:edit.reads) {
-				pw.println(">"+i);
-				pw.println(seq);
-				i++;
-			}
-			pw.close();
-		}*/
-		
-		
-		for(OneEdit e:allEdits) {
+		System.out.println("serializing and aligning");
+		File fSerial=new File(fOut.getParentFile(), fOut.getName()+".serial");
+	    FileOutputStream fileOutputStream = new FileOutputStream(fSerial);
+	    GZIPOutputStream gzipOutputStream = new GZIPOutputStream(fileOutputStream);
+	    ObjectOutputStream objectOutputStream = new ObjectOutputStream(gzipOutputStream);
+
+	    objectOutputStream.writeInt(allEdits.size());
+
+	    //Transfer to a list so we can kick them out soon enough
+	    LinkedList<OneEdit> listAllEdits=new LinkedList<>(allEdits);
+	    allEdits.clear();
+	    mapChromEdits.clear();
+	    
+	    while(!listAllEdits.isEmpty()) {
+	    	OneEdit e = listAllEdits.removeFirst();
 			System.out.println("align "+e.geneid);
 			
 			align(e);
-
-			
 			
 			//Remove interval variable - not serializable
 			e.interval=null; 
-		}
+			
+		    objectOutputStream.writeObject(e);
+
+	    }
+	    
 		
-		System.out.println("serializing");
-		File fSerial=new File(fOut.getParentFile(), fOut.getName()+".serial");
-	    FileOutputStream fileOutputStream = new FileOutputStream(fSerial);
-	    ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-	    objectOutputStream.writeObject(allEdits);
-	    objectOutputStream.flush();
 	    objectOutputStream.close();
+	    gzipOutputStream.close();
+	    fileOutputStream.close();
+	    
+	    System.out.println("done");
 		
 	}
 	

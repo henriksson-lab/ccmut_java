@@ -14,6 +14,9 @@ import changchun.util.MatchSeq;
  * 
  * Write a BED file that point to regions that have been gene edited. This is precisely the edit position, not the entire gene
  * 
+ * 
+ * TODO need a new mapping wbid - symbol to run this
+ * 
  * @author Johan Henriksson
  *
  */
@@ -56,11 +59,24 @@ public class WriteGeneEditPositions {
 	 */
 	public static void main(String[] args) throws IOException {
 		TreeMap<String, String> geneMap=CCutil.getNameMap();
+		//uses map_wbid_transcid.csv   contains zzz-1! with WBGene00009333
+		
+		
 		CCutil.readGeneFastaWithExtra();
 		BufferedReader br=new BufferedReader(new FileReader(new File("/home/mahogny/Desktop/celegans/gene_edits.csv")));
+		//now: /home/mahogny/Dropbox/umea/project/changchun/gpcr/mutantanalysis/gene_edits.csv
+		//has: 1692 (and a header)
+		//this is a list of genesym, from, to, sequences
 		
 		PrintWriter pwListGene=new PrintWriter(new File("/home/mahogny/Desktop/celegans/mutant.csv"));
+		//now: /home/mahogny/oldhome/Desktop/alldesktop/celegans/mutant.csv
+		//has: 1690
+		//this is a list of WBIDs ... why is 1 id missing?
+		
+		
 		PrintWriter pwBed=new PrintWriter(new File("/home/mahogny/Desktop/celegans/edit_positions.bed"));
+		//now: /home/mahogny/oldhome/Desktop/alldesktop/celegans/edit_positions.bed
+		//has: 1441
 		
 		br.readLine();
 		String line=null;
@@ -100,6 +116,9 @@ public class WriteGeneEditPositions {
 			} else {
 				System.out.println("No such wbid "+wbid);
 				
+				break;//throw new IOException("No wbid!");
+				
+				//TODO these must all be handled!
 				
 				//no such: WBGene00305048 . in neither all.fa or all.gff
 				

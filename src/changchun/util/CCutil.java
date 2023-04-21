@@ -42,7 +42,7 @@ public class CCutil {
 		else if(c=='N')
 			return 'N';
 		else {
-            System.out.println("base: "+c);
+            System.out.println("odd base in RC: -"+c+"-");
             return 'N';
 		}
 	
@@ -63,10 +63,10 @@ public class CCutil {
 	
 	
 	/**
-	 * Read FASTA with the sequence of each gene
+	 * Read FASTA with the sequence of each gene -- precisely the gene
 	 */
-	public static void readGeneFastaNoExtra() throws IOException {
-		BufferedReader br=new BufferedReader(new FileReader(new File("genes.fa")));
+	public static void readGeneFastaNoExtra(File fFASTA) throws IOException {
+		BufferedReader br=new BufferedReader(new FileReader(new File("/home/mahogny/mystore/dataset/changchun/gpcr/refgenome/list_geneedit_pos_NEW.fa")));
 		
 		String line;
 		while((line=br.readLine())!=null) {
@@ -81,11 +81,10 @@ public class CCutil {
 
 	
 	/**
-	 * Get FASTA seq for genes that we have previously cut out
+	 * Read FASTA with the sequence of each gene -- some extra to aid alignment
 	 */
 	public static void readGeneFastaWithExtra() throws IOException {
-		//BufferedReader br=new BufferedReader(new FileReader(new File("genes.fa")));
-		BufferedReader br=new BufferedReader(new FileReader(new File("all.bed.fa")));  //cut out a bit extra here... 300bp?
+		BufferedReader br=new BufferedReader(new FileReader(new File("/home/mahogny/mystore/dataset/changchun/gpcr/refgenome/list_geneedit_pos_wextra_NEW.fa")));
 				
 	
 		StringBuilder sb=new StringBuilder();
@@ -175,9 +174,15 @@ public class CCutil {
 	    objectOutputStream.close();
 	}
 
+
+	
+
+
+	
 	/**
 	 * Read what genes should be edited to. wbid -> sequence
 	 */
+	@SuppressWarnings("resource")
 	public static HashMap<String, String> readMapWbidEditedseq() throws IOException {
 		HashMap<String,String> attemptedGeneEdits=new HashMap<String, String>();
 		TreeMap<String, String> geneMap=getNameMap();

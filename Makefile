@@ -19,8 +19,9 @@ tosql:
 		/data/henlab/changchun/mut
 
 tobeagle:
-	scp src/changchun/*.java beagle.henlab.org:/corgi/otherdataset/changchun/gpcr/src/changchun
-	scp bin/changchun/*.class beagle.henlab.org:/corgi/otherdataset/changchun/gpcr/bin/changchun  #misses files
+	scp -rp src beagle.henlab.org:/corgi/otherdataset/changchun/gpcr/
+	#scp /changchun/*.java beagle.henlab.org:/corgi/otherdataset/changchun/gpcr/src/changchun
+	#scp bin/changchun/*.class beagle.henlab.org:/corgi/otherdataset/changchun/gpcr/bin/changchun  #misses files
 
 msadiff:
 	cd bin; java -cp .:../lib/htsjdk-2.23.0-3-g657b0a6-SNAPSHOT.jar:../lib/sqlite-jdbc-3.34.0.jar \
